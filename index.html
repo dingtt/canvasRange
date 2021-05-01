@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>演示Canvas range </title>
+        <link
+            href="https://cdn.bootcdn.net/ajax/libs/twitter-bootstrap/5.0.0-beta3/css/bootstrap-grid.min.css"
+            rel="stylesheet"
+        />
+        <style>
+            body {
+                padding: 0;
+                margin: 0;
+            }
+            #canvas {
+                margin: 0 auto;
+                background: #fff;
+                height: 120px;
+                overflow: hidden;
+                display: block;
+            }
+            .mt15 {
+                margin-top: 15px;
+            }
+            .mt35 {
+                margin-top: 35px;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="row mt15">
+                <div class="col-xs-12 col-sm-6 col-md-3 col-lg-3">
+                    开始：<input id="beginTime" type="text" />
+                </div>
+                <div class="col-xs-12 col-sm-6 col-md-3 col-lg-3">
+                    结束：<input id="endTime" type="text" />
+                </div>
+                <div class="col-xs-12 col-sm-6 col-md-3 col-lg-3">
+                    起点 ：<input
+                        id="beginDeep"
+                        type="text"
+                        pattern="\d"
+                        value="30"
+                    />
+                </div>
+                <div class="col-xs-12 col-sm-6 col-md-3 col-lg-3">
+                    终止：
+                    <input
+                        id="endDeep"
+                        type="text"
+                        pattern="[0-9]"
+                        value="5400"
+                    />
+                </div>
+            </div>
+            <div style="color: #999; text-align: right">
+                拖动改变某一项因素时，真实的关联数据变化是非线性相关的。
+            </div>
+        </div>
+        <canvas id="canvas" width="" height=""></canvas>
+
+        <script src="./js/es5-shim.js"></script>
+        <script src="./js/es5-sham.js"></script>
+        <script src="./laydate/laydate.js"></script>
+        <script src="./data/index.js"></script>
+        <script src="./js/index.aio.min.js"></script>
+
+        <script>
+            console.log(window["CanvasRange"]);
+            const canvas = document.getElementById("canvas");
+            const dpr = window.devicePixelRatio;
+            const canvasHtmlWidth = Math.floor(
+                document.body.offsetWidth * 0.99 - 20
+            );
+            const canvasHtmlHeight = 120;
+            canvas.style.height = canvasHtmlHeight + "px";
+            canvas.style.width = canvasHtmlWidth + "px";
+            canvas.width = canvasHtmlWidth * dpr;
+            canvas.height = canvasHtmlHeight * dpr;
+            const AxisApplication = window.CanvasRange.AxisApplication;
+            let img = null;
+            let axis = null;
+            (async () => {
+                let initBeginDeep = 30,
+                    beginDeep = 30;
+                let initEndDeep = 5400,
+                    endDeep = 5400;
+                let initBeginTime = 1596107520,
+                    beginTime = 1596107520;
+                let initEndTime = 1618396200,
+                    endTime = 1618396200;
+                const beginDeepNode = document.getElementById("beginDeep");
+                const endDeepNode = document.getElementById("endDeep");
+                // 初始值
+                laydate.render({
+                    elem: "#beginTime",
+                    type: "datetime",
+                    value: new Date(initBeginTime * 1000),
+                    done: function (value, date) {
+                        console.log(
+                            "你选择的日期是：" +
+                                value +
+                                "\n\n获得的对象是" +
+                                JSON.stringify(date)
+                        );
+                    },
+                });
+                laydate.render({
+                    elem: "#endTime",
+                    type: "datetime",
+                    value: new Date(initEndTime * 1000),
+                    done: function (value, date) {
+                        console.log(
+                            "你选择的日期是：" +
+                                value +
+                                "\n\n获得的对象是" +
+                                JSON.stringify(date)
+                        );
+                    },
+                });
+                img = await loadImage("./img/sd.png");
+                axis = new AxisApplication(canvas, {
+                    initBeginTime: initBeginTime,
+                    initEndTime: initEndTime,
+                    initBeginDeep: initBeginDeep,
+                    initEndDeep: initEndDeep,
+                    list: list, // 井数据
+                    deeps: deeps, // 深度数据
+                    nodes: nodes, // 节点数据
+                    icon: img,
+                });
+                // 因素一
+                axis.$on("changeGK", async function (t1, t2) {
+                    console.log("changeGK", t1, t2);
+                    laydate.render({
+                        elem: "#beginTime",
+                        type: "datetime",
+                        value: new Date(t1 * 1000),
+                    });
+                    laydate.render({
+                        elem: "#endTime",
+                        type: "datetime",
+                        value: new Date(t2 * 1000),
+                    });
+                    // 模拟延迟
+                    setTimeout(() => {
+                        // 模拟计算
+                        beginDeep = calcDeepMock(
+                            t1,
+                            initBeginTime,
+                            initEndTime,
+                            initBeginDeep,
+                            initEndDeep
+                        );
+                        endDeep = calcDeepMock(
+                            t2,
+                            initBeginTime,
+                            initEndTime,
+                            initBeginDeep,
+                            initEndDeep
+                        );
+                        beginDeepNode.value = beginDeep;
+                        endDeepNode.value = endDeep;
+                        // 不刷新轴本身
+                        axis.changeData(0, 0, beginDeep, endDeep);
+                    }, 500);
+                });
+                // 时间变化
+                axis.$on("changeTime", async function (t1, t2) {
+                    console.log("changeGK", t1, t2);
+                    laydate.render({
+                        elem: "#beginTime",
+                        type: "datetime",
+                        value: new Date(t1 * 1000),
+                    });
+                    laydate.render({
+                        elem: "#endTime",
+                        type: "datetime",
+                        value: new Date(t2 * 1000),
+                    });
+                    // 模拟延迟
+                    setTimeout(() => {
+                        // 模拟计算
+                        beginDeep = calcDeepMock(
+                            t1,
+                            initBeginTime,
+                            initEndTime,
+                            initBeginDeep,
+                            initEndDeep
+                        );
+                        endDeep = calcDeepMock(
+                            t2,
+                            initBeginTime,
+                            initEndTime,
+                            initBeginDeep,
+                            initEndDeep
+                        );
+                        beginDeepNode.value = beginDeep;
+                        endDeepNode.value = endDeep;
+                        // 不刷新轴本身
+                        axis.changeData(0, 0, beginDeep, endDeep);
+                    }, 500);
+                });
+                // 因素三
+                axis.$on("changeDeep", async function (d1, d2) {
+                    beginDeepNode.value = d1;
+                    endDeepNode.value = d2;
+                    setTimeout(() => {
+                        // 模拟计算
+                        beginTime = calcTimeMock(
+                            d1,
+                            initBeginTime,
+                            initEndTime,
+                            initBeginDeep,
+                            initEndDeep
+                        );
+                        endTime = calcTimeMock(
+                            d2,
+                            initBeginTime,
+                            initEndTime,
+                            initBeginDeep,
+                            initEndDeep
+                        );
+                        laydate.render({
+                            elem: "#beginTime",
+                            type: "datetime",
+                            value: new Date(beginTime * 1000),
+                        });
+                        laydate.render({
+                            elem: "#endTime",
+                            type: "datetime",
+                            value: new Date(endTime * 1000),
+                        });
+                        // 不刷新轴本身
+                        axis.changeData(beginTime, endTime, d1, d2);
+                    }, 500);
+                });
+            })();
+            function calcDeepMock(
+                t,
+                initBeginTime,
+                initEndTime,
+                initBeginDeep,
+                initEndDeep
+            ) {
+                const res =
+                    ((t - initBeginTime) / (initEndTime - initBeginTime)) *
+                        (initEndDeep - initBeginDeep) +
+                    initBeginDeep +
+                    parseInt(Math.random() * 80);
+                return Math.floor(res);
+            }
+            function calcTimeMock(
+                d,
+                initBeginTime,
+                initEndTime,
+                initBeginDeep,
+                initEndDeep
+            ) {
+                const res =
+                    ((d - initBeginDeep) / (initEndDeep - initBeginDeep)) *
+                        (initEndTime - initBeginTime) +
+                    initBeginTime +
+                    parseInt(Math.random() * 10000);
+                return Math.floor(res);
+            }
+            function loadImage(url) {
+                let img = document.createElement("img");
+                img.src = url;
+                return new Promise((resolve, reject) => {
+                    img.onload = (ev) => {
+                        resolve(img);
+                    };
+                    img.onerror = (err) => {
+                        reject(err);
+                    };
+                });
+            }
+            
+        </script>
+    </body>
+</html>
